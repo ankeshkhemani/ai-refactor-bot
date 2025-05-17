@@ -176,3 +176,7 @@ cython_debug/
 
 # keys
 github-private-key.pem
+
+# Private docs
+pvt-docs/
+

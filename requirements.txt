@@ -1,5 +1,6 @@
 openai
 requests
 pygithub
-fastapi
+gidgethub[flask]
+flask
 python-dotenv
