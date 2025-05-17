@@ -4,3 +4,5 @@ pygithub
 gidgethub[flask]
 flask
 python-dotenv
+radon
+flake8
