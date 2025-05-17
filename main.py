@@ -25,6 +25,10 @@ with open(PRIVATE_KEY_PATH, "rb") as key_file:
 # For Public repo using railway
 PRIVATE_KEY = os.getenv("PRIVATE_KEY").encode()
 
+@app.route("/ping", methods=["GET"])
+def ping():
+    return "pong", 200
+    
 # GitHub event handler
 @router.register("push")
 async def handle_push_event(event, gh, *args, **kwargs):
@@ -59,6 +63,10 @@ def generate_jwt():
         PRIVATE_KEY,
         algorithm="RS256"
     )
-
+"""
 if __name__ == "__main__":
     app.run(port=3000)
+"""
+# For railway
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=3000)
