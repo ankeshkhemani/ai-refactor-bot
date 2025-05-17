@@ -13,10 +13,17 @@ router = routing.Router()
 
 GITHUB_APP_ID = os.getenv("GITHUB_APP_ID")
 WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET")
+
+"""
+# For Private Repo
 PRIVATE_KEY_PATH = os.getenv("GITHUB_PRIVATE_KEY_PATH")
 
 with open(PRIVATE_KEY_PATH, "rb") as key_file:
     PRIVATE_KEY = key_file.read()
+"""
+
+# For Public repo using railway
+PRIVATE_KEY = os.getenv("PRIVATE_KEY").encode()
 
 # GitHub event handler
 @router.register("push")
