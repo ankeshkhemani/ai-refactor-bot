@@ -37,6 +37,27 @@ AI Refactoring Bot is a GitHub-integrated tool that automatically scans your Pyt
 
 ---
 
+## 🔍 Scanning Logic (MVP)
+
+The bot scans the target Python repository by:
+
+1. Fetching all `.py` files via the GitHub API (recursive `contents` endpoint)
+2. Excluding:
+   - Non-Python files
+3. For each Python file:
+   - Complexity and duplication analysis planned using `radon` and LLM heuristics
+   - Refactor suggestions triggered if patterns match:
+
+| Pattern                        | Reason |
+|-------------------------------|--------|
+| Long functions (>20 lines)    | Complexity / readability |
+| Manual loop for filtering     | Could be list comprehension |
+| Unused imports / variables    | Clean-up opportunity |
+| Old-style string formatting   | Convert to f-strings |
+| Nested ifs with else          | Flatten for readability |
+
+---
+
 ## 📋 Configuration
 
 Customize the tool behavior through a simple configuration file (`.refactorai.yml`) placed in your repository:

@@ -180,3 +180,5 @@ github-private-key.pem
 # Private docs
 pvt-docs/
 
+# Pycharm
+.idea/
