@@ -1,3 +1,103 @@
+# AI Refactoring Bot
+
+An intelligent GitHub bot that automatically scans Python repositories for technical debt and generates refactoring suggestions using AI.
+
+## Features
+
+- 🔍 Automated code scanning using Radon and Flake8
+- 🤖 AI-powered code refactoring suggestions using GPT-4
+- 🔄 Automatic PR creation for suggested improvements
+- 📊 Code quality metrics and analysis
+- 🔐 Secure GitHub App integration
+
+## Prerequisites
+
+- Python 3.8+
+- GitHub App credentials
+- OpenAI API key
+- Railway account (for deployment)
+
+## Setup
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/ai-refactor-bot.git
+cd ai-refactor-bot
+```
+
+2. Create and activate a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Create a `.env` file with the following variables:
+```env
+# GitHub App Configuration
+GITHUB_APP_ID=your_app_id
+GITHUB_WEBHOOK_SECRET=your_webhook_secret
+PRIVATE_KEY=your_private_key
+
+# OpenAI Configuration
+OPENAI_API_KEY=your_openai_api_key
+
+# Repository Configuration
+REPO_OWNER=your_username
+REPO_NAME=your_repo_name
+```
+
+## Development
+
+1. Run the development server:
+```bash
+uvicorn ai_refactor_bot.api.main:app --reload
+```
+
+2. Run tests:
+```bash
+pytest
+```
+
+3. Format code:
+```bash
+black .
+isort .
+```
+
+## Deployment
+
+1. Create a new Railway project
+2. Connect your GitHub repository
+3. Add the required environment variables
+4. Deploy!
+
+## Project Structure
+
+```
+ai_refactor_bot/
+├── api/            # FastAPI application and routes
+├── core/           # Core business logic
+├── utils/          # Utility functions
+└── tests/          # Test suite
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+
+MIT License - see LICENSE file for details
+
 # 🛠️ AI Refactoring Bot (MVP)
 
 AI Refactoring Bot is a GitHub-integrated tool that automatically scans your Python repositories for technical debt and generates refactoring suggestions using advanced LLMs. It operates entirely within GitHub, creating pull requests with clear, actionable improvements to keep your code clean and maintainable.
@@ -55,6 +155,8 @@ The bot scans the target Python repository by:
 | Unused imports / variables    | Clean-up opportunity |
 | Old-style string formatting   | Convert to f-strings |
 | Nested ifs with else          | Flatten for readability |
+  - The safest and simplest changes are sent via PRs first and if those PRs, get merged, then new PRs are generated with incrementally more powerful refactors.
+  - The scanning and suggestions are triggered first whenever the app is installed and then after every suggested PR is merged.
 
 ---
 

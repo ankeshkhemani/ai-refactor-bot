@@ -1,0 +1,19 @@
+exclude_paths:
+  - tests/
+  - migrations/
+  - venv/
+  - .git/
+  - pvt-docs/
+
+scan_frequency: weekly
+
+refactoring:
+  style_improvements: true
+  complexity_reduction: true
+  unused_imports: true
+  string_formatting: true
+  loop_optimization: true
+
+max_file_size: 1000000  # 1MB
+max_complexity: 10
+min_maintainability: 50

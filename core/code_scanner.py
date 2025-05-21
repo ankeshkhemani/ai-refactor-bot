@@ -1,50 +1,56 @@
 # ai_refactor_bot/code_scanner.py
 
-import os
 import base64
-import requests
+import logging
+import os
+import shutil
 import subprocess
 import tempfile
 import time
-import logging
-import jwt
-import shutil
-from dotenv import load_dotenv
-from typing import List, Dict
 from datetime import datetime, timedelta
+from typing import Dict, List
+
+import jwt
+import requests
+from dotenv import load_dotenv
 
 load_dotenv()
-logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
 REPO_OWNER = os.getenv("REPO_OWNER") or input("Enter the repository owner: ").strip()
 REPO_NAME = os.getenv("REPO_NAME") or input("Enter the repository name: ").strip()
 HEAD_REF = os.getenv("REPO_BRANCH", "main")
 
 APP_ID = os.getenv("GITHUB_APP_ID") or input("Enter your GitHub App ID: ").strip()
-PRIVATE_KEY_PATH = os.getenv("GITHUB_PRIVATE_KEY_PATH") or input("Enter the path to your GitHub App's private key (.pem): ").strip()
-INSTALLATION_ID = os.getenv("GITHUB_INSTALLATION_ID") or input("Enter your GitHub App installation ID: ").strip()
+PRIVATE_KEY_PATH = (
+    os.getenv("GITHUB_PRIVATE_KEY_PATH")
+    or input("Enter the path to your GitHub App's private key (.pem): ").strip()
+)
+INSTALLATION_ID = (
+    os.getenv("GITHUB_INSTALLATION_ID")
+    or input("Enter your GitHub App installation ID: ").strip()
+)
+
 
 def generate_jwt(app_id: str, private_key_path: str) -> str:
-    with open(private_key_path, 'r') as f:
+    with open(private_key_path, "r") as f:
         private_key = f.read()
     now = datetime.utcnow()
-    payload = {
-        'iat': now,
-        'exp': now + timedelta(minutes=10),
-        'iss': app_id
-    }
-    encoded_jwt = jwt.encode(payload, private_key, algorithm='RS256')
+    payload = {"iat": now, "exp": now + timedelta(minutes=10), "iss": app_id}
+    encoded_jwt = jwt.encode(payload, private_key, algorithm="RS256")
     return encoded_jwt
+
 
 def get_installation_token(jwt_token: str, installation_id: str) -> str:
     url = f"https://api.github.com/app/installations/{installation_id}/access_tokens"
     headers = {
         "Authorization": f"Bearer {jwt_token}",
-        "Accept": "application/vnd.github+json"
+        "Accept": "application/vnd.github+json",
     }
     response = requests.post(url, headers=headers)
     response.raise_for_status()
     return response.json()["token"]
+
 
 def get_tree_sha(branch: str) -> str:
     url = f"{API_URL}/branches/{branch}"
@@ -52,11 +58,14 @@ def get_tree_sha(branch: str) -> str:
     resp = requests.get(url, headers=HEADERS)
 
     if resp.status_code == 404:
-        logging.error(f"Branch '{branch}' not found. Check if the branch exists in the repository.")
+        logging.error(
+            f"Branch '{branch}' not found. Check if the branch exists in the repository."
+        )
         raise RuntimeError(f"Branch '{branch}' not found.")
 
     resp.raise_for_status()
     return resp.json()["commit"]["commit"]["tree"]["sha"]
+
 
 jwt_token = generate_jwt(APP_ID, PRIVATE_KEY_PATH)
 INSTALLATION_TOKEN = get_installation_token(jwt_token, INSTALLATION_ID)
@@ -68,6 +77,7 @@ HEADERS = {
 
 API_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}"
 
+
 def fetch_python_files() -> List[str]:
     tree_sha = get_tree_sha(HEAD_REF)
     tree_url = f"{API_URL}/git/trees/{tree_sha}?recursive=1"
@@ -77,13 +87,18 @@ def fetch_python_files() -> List[str]:
             resp = requests.get(tree_url, headers=HEADERS)
             resp.raise_for_status()
             files = resp.json().get("tree", [])
-            py_files = [f["path"] for f in files if f["path"].endswith(".py") and f["type"] == "blob"]
+            py_files = [
+                f["path"]
+                for f in files
+                if f["path"].endswith(".py") and f["type"] == "blob"
+            ]
             logging.info(f"Found {len(py_files)} Python files")
             return py_files
         except requests.RequestException as e:
             logging.warning(f"Attempt {attempt+1}: Failed to fetch file tree - {e}")
             time.sleep(2)
     raise RuntimeError("Failed to fetch Python files from GitHub after 3 attempts")
+
 
 def download_and_decode_file(path: str) -> str:
     file_url = f"{API_URL}/contents/{path}"
@@ -96,15 +111,20 @@ def download_and_decode_file(path: str) -> str:
             logging.info(f"Decoded content from: {path}")
             return base64.b64decode(content).decode("utf-8")
         except requests.RequestException as e:
-            logging.warning(f"Attempt {attempt+1}: Failed to download file {path} - {e}")
+            logging.warning(
+                f"Attempt {attempt+1}: Failed to download file {path} - {e}"
+            )
             time.sleep(2)
     raise RuntimeError(f"Failed to download file {path} after 3 attempts")
 
+
 def run_radon_analysis(code: str) -> Dict:
     if not shutil.which("radon"):
-        raise EnvironmentError("'radon' CLI tool is not installed. Please install it with: pip install radon")
+        raise EnvironmentError(
+            "'radon' CLI tool is not installed. Please install it with: pip install radon"
+        )
 
-    with tempfile.NamedTemporaryFile(mode='w+', suffix='.py', delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(mode="w+", suffix=".py", delete=False) as tmp:
         tmp.write(code)
         tmp.flush()
         tmp_path = tmp.name
@@ -122,18 +142,23 @@ def run_radon_analysis(code: str) -> Dict:
         logging.debug(f"Deleted temp file: {tmp_path}")
     return results
 
+
 def run_flake8_analysis(code: str) -> List[str]:
     if not shutil.which("flake8"):
-        raise EnvironmentError("'flake8' CLI tool is not installed. Please install it with: pip install flake8")
+        raise EnvironmentError(
+            "'flake8' CLI tool is not installed. Please install it with: pip install flake8"
+        )
 
-    with tempfile.NamedTemporaryFile(mode='w+', suffix='.py', delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(mode="w+", suffix=".py", delete=False) as tmp:
         tmp.write(code)
         tmp.flush()
         tmp_path = tmp.name
     logging.info(f"Running flake8 analysis on temp file: {tmp_path}")
 
     try:
-        output = subprocess.check_output(["flake8", tmp_path], stderr=subprocess.DEVNULL)
+        output = subprocess.check_output(
+            ["flake8", tmp_path], stderr=subprocess.DEVNULL
+        )
         logging.info("flake8 analysis complete")
         return output.decode().splitlines()
     except subprocess.CalledProcessError as e:
@@ -142,6 +167,7 @@ def run_flake8_analysis(code: str) -> List[str]:
     finally:
         os.remove(tmp_path)
         logging.debug(f"Deleted temp file: {tmp_path}")
+
 
 def scan_repository() -> Dict[str, Dict]:
     logging.info("Starting repository scan...")
@@ -152,10 +178,11 @@ def scan_repository() -> Dict[str, Dict]:
         code = download_and_decode_file(path)
         analysis[path] = {
             "radon": run_radon_analysis(code),
-            "flake8": run_flake8_analysis(code)
+            "flake8": run_flake8_analysis(code),
         }
     logging.info("Repository scan complete")
     return analysis
+
 
 if __name__ == "__main__":
     logging.info("Starting full scan run")
@@ -167,7 +194,9 @@ if __name__ == "__main__":
         print("\n  🔢 Cyclomatic Complexity:")
         for tmp_path, entries in radon_data["complexity"].items():
             for fn in entries:
-                print(f"    - {fn['name']} (line {fn['lineno']}): complexity {fn['complexity']}, rank {fn['rank']}")
+                print(
+                    f"    - {fn['name']} (line {fn['lineno']}): complexity {fn['complexity']}, rank {fn['rank']}"
+                )
 
         print("\n  📊 Maintainability Index:")
         for tmp_path, entry in radon_data["maintainability"].items():

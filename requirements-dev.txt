@@ -1,0 +1,38 @@
+# Testing Framework
+# ---------------
+pytest>=7.0.0          # Testing framework
+pytest-asyncio>=0.21.0 # Async support for pytest
+pytest-cov>=4.1.0      # Coverage reporting plugin
+pytest-mock>=3.12.0    # Mocking utilities for tests
+
+# Code Quality Tools
+# ---------------
+black>=23.0.0          # Code formatter
+isort>=5.12.0          # Import sorter
+flake8>=6.0.0          # Code linter
+mypy>=1.0.0            # Static type checker
+radon>=6.0.0           # Code complexity metrics
+ruff>=0.3.0            # Fast Python linter
+
+# Documentation
+# ---------------
+mkdocs>=1.5.0          # Documentation generator
+mkdocs-material>=9.5.0 # Material theme for MkDocs
+mkdocstrings>=0.24.0   # Automatic API documentation
+mkdocstrings-python>=1.7.0  # Python handler for mkdocstrings
+beautifulsoup4>=4.12.0 # HTML parsing for doc tests
+markdown>=3.5.0        # Markdown parsing for doc tests
+PyYAML>=6.0.1          # YAML parsing for doc tests
+
+# Development Tools
+# ---------------
+pre-commit>=3.6.0      # Git hooks manager
+python-dotenv>=0.19.0  # Environment variable management
+
+# Optional Development Tools
+# ---------------
+# Uncomment if you need these features:
+# ipython>=8.0.0        # Enhanced Python REPL
+# ipdb>=0.13.0         # Enhanced debugger
+# pytest-benchmark>=4.0.0  # Performance benchmarking
+# pytest-xdist>=3.0.0  # Parallel test execution

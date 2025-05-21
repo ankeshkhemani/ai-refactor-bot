@@ -127,8 +127,10 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
-# Environments
+# Environments and Environment Variables
 .env
+.env.*
+!.env.example
 .venv
 env/
 venv/
@@ -173,12 +175,85 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-
 # keys
 github-private-key.pem
 
-# Private docs
-pvt-docs/
-
 # Pycharm
 .idea/
+
+# Project specific
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.p8
+*.p7b
+*.p7c
+*.p7s
+*.p7m
+*.p7r
+*.p7x
+*.p7y
+*.p7z
+*.p7a
+*.p7b
+*.p7c
+*.p7d
+*.p7e
+*.p7f
+*.p7g
+*.p7h
+*.p7i
+*.p7j
+*.p7k
+*.p7l
+*.p7m
+*.p7n
+*.p7o
+*.p7p
+*.p7q
+*.p7r
+*.p7s
+*.p7t
+*.p7u
+*.p7v
+*.p7w
+*.p7x
+*.p7y
+*.p7z
+
+# Temporary files
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log.*
+
+# Local development
+local_settings.py
+local.py
+local_*.py
+
+# Cache directories
+.cache/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Distribution
+dist/
+build/
+*.egg-info/
+
+# IDE specific
+.vscode/
+*.code-workspace
+.history/
