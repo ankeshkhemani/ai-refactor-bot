@@ -1,6 +1,10 @@
+"""GitHub PR utilities for the AI Refactor Bot."""
+
 import os
+from typing import Dict
 
 import httpx
+import requests
 
 # Required environment variables:
 # - GITHUB_TOKEN
@@ -100,3 +104,69 @@ async def create_pr_for_file_change(
         )
 
         return pr_resp.json()["html_url"]
+
+
+def create_pr(
+    repo_owner: str,
+    repo_name: str,
+    base_branch: str,
+    head_branch: str,
+    title: str,
+    body: str,
+    token: str,
+) -> Dict:
+    """Create a pull request on GitHub."""
+    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/pulls"
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json",
+    }
+    data = {
+        "title": title,
+        "body": body,
+        "head": head_branch,
+        "base": base_branch,
+    }
+    response = requests.post(url, headers=headers, json=data)
+    response.raise_for_status()
+    return response.json()
+
+
+def update_pr(
+    repo_owner: str,
+    repo_name: str,
+    pr_number: int,
+    title: str,
+    body: str,
+    token: str,
+) -> Dict:
+    """Update an existing pull request on GitHub."""
+    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/pulls/{pr_number}"
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json",
+    }
+    data = {
+        "title": title,
+        "body": body,
+    }
+    response = requests.patch(url, headers=headers, json=data)
+    response.raise_for_status()
+    return response.json()
+
+
+def get_pr(
+    repo_owner: str,
+    repo_name: str,
+    pr_number: int,
+    token: str,
+) -> Dict:
+    """Get details of a pull request from GitHub."""
+    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/pulls/{pr_number}"
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json",
+    }
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    return response.json()

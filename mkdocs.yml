@@ -1,4 +1,4 @@
-site_name: AI Refactoring Bot
+site_name: AI Refactor Bot Documentation
 site_description: Documentation for the AI Refactoring Bot project
 site_author: AI Refactoring Bot Team
 repo_url: https://github.com/yourusername/ai-refactor-bot
@@ -46,30 +46,20 @@ nav:
   - Home: index.md
   - Getting Started:
     - Installation: getting-started/installation.md
-    - Quick Start: getting-started/quickstart.md
-    - Configuration: getting-started/configuration.md
+    - Quickstart: getting-started/quickstart.md
   - User Guide:
     - Features: user-guide/features.md
-    - Usage: user-guide/usage.md
-    - Best Practices: user-guide/best-practices.md
-  - Development:
-    - Setup: development/setup.md
-    - Architecture: development/architecture.md
-    - Contributing: development/contributing.md
-    - Testing: development/testing.md
-  - API Reference:
+  - API:
     - Overview: api/overview.md
     - Endpoints: api/endpoints.md
-    - Authentication: api/authentication.md
-  - Deployment:
-    - Overview: deployment/overview.md
-    - Railway: deployment/railway.md
-    - Docker: deployment/docker.md
-    - Manual: deployment/manual.md
-  - Troubleshooting:
-    - Common Issues: troubleshooting/common-issues.md
-    - Debugging: troubleshooting/debugging.md
-    - FAQ: troubleshooting/faq.md
+  - Development:
+    - Architecture: development/architecture.md
+    - Guide: development.md
+  - Deployment: deployment.md
+  - Troubleshooting: troubleshooting.md
+  - Templates:
+    - API Endpoint: templates/api-endpoint.md
+    - Feature: templates/feature.md
 
 plugins:
   - search
@@ -82,3 +72,6 @@ plugins:
           rendering:
             show_source: true
             show_root_heading: true
+
+exclude:
+  - venv/

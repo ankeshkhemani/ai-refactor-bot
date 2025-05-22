@@ -18,8 +18,8 @@ def get_markdown_files() -> List[Path]:
 
 
 def get_python_files() -> List[Path]:
-    """Get all Python files in the project."""
-    return list(Path(".").rglob("*.py"))
+    """Get all Python files in the project, excluding virtual environments."""
+    return [p for p in Path(".").rglob("*.py") if "venv" not in str(p)]
 
 
 def test_docs_structure():

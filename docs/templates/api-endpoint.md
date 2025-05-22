@@ -1,3 +1,5 @@
+# API Endpoint Template
+
 # Endpoint Name
 
 ## Overview

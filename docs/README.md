@@ -1,3 +1,5 @@
+# Documentation Overview
+
 # AI Refactoring Bot Documentation
 
 This directory contains detailed documentation for the AI Refactoring Bot project.

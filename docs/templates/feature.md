@@ -1,3 +1,5 @@
+# Feature Template
+
 # Feature Name
 
 ## Overview

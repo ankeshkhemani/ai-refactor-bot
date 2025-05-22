@@ -59,7 +59,8 @@ def get_tree_sha(branch: str) -> str:
 
     if resp.status_code == 404:
         logging.error(
-            f"Branch '{branch}' not found. Check if the branch exists in the repository."
+            f"Branch '{branch}' not found. "
+            "Check if the branch exists in the repository."
         )
         raise RuntimeError(f"Branch '{branch}' not found.")
 
@@ -121,7 +122,8 @@ def download_and_decode_file(path: str) -> str:
 def run_radon_analysis(code: str) -> Dict:
     if not shutil.which("radon"):
         raise EnvironmentError(
-            "'radon' CLI tool is not installed. Please install it with: pip install radon"
+            "'radon' CLI tool is not installed. "
+            "Please install it with: pip install radon"
         )
 
     with tempfile.NamedTemporaryFile(mode="w+", suffix=".py", delete=False) as tmp:
@@ -146,7 +148,8 @@ def run_radon_analysis(code: str) -> Dict:
 def run_flake8_analysis(code: str) -> List[str]:
     if not shutil.which("flake8"):
         raise EnvironmentError(
-            "'flake8' CLI tool is not installed. Please install it with: pip install flake8"
+            "'flake8' CLI tool is not installed. "
+            "Please install it with: pip install flake8"
         )
 
     with tempfile.NamedTemporaryFile(mode="w+", suffix=".py", delete=False) as tmp:
@@ -195,7 +198,8 @@ if __name__ == "__main__":
         for tmp_path, entries in radon_data["complexity"].items():
             for fn in entries:
                 print(
-                    f"    - {fn['name']} (line {fn['lineno']}): complexity {fn['complexity']}, rank {fn['rank']}"
+                    f"    - {fn['name']} (line {fn['lineno']}): "
+                    f"complexity {fn['complexity']}, rank {fn['rank']}"
                 )
 
         print("\n  📊 Maintainability Index:")

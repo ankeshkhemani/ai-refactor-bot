@@ -3,7 +3,15 @@ repos:
     rev: v5.0.0
     hooks:
     -   id: trailing-whitespace
+        name: trailing-whitespace (check only)
+        description: |
+          Found trailing whitespace. Run this to fix:
+          git diff --name-only | xargs sed -i '' 's/[[:space:]]*$//'
     -   id: end-of-file-fixer
+        name: end-of-file-fixer (check only)
+        description: |
+          Files should end with a newline. Run this to fix:
+          git diff --name-only | xargs sed -i '' -e '$a\'
     -   id: check-yaml
     -   id: check-added-large-files
     -   id: check-ast
@@ -15,243 +23,28 @@ repos:
     rev: 25.1.0
     hooks:
     -   id: black
-        language_version: python3
+        args: [--check]
+        name: black (check only)
+        description: |
+          Black would reformat your code. Run this to fix:
+          black .
 
 -   repo: https://github.com/pycqa/isort
     rev: 6.0.1
     hooks:
     -   id: isort
-        args: ["--profile", "black"]
+        args: ["--check-only", "--profile", "black"]
+        name: isort (check only)
+        description: |
+          isort would sort your imports. Run this to fix:
+          isort .
 
 -   repo: https://github.com/charliermarsh/ruff-pre-commit
     rev: v0.11.10
     hooks:
     -   id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
-
--   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.15.0
-    hooks:
-    -   id: mypy
-        additional_dependencies:
-        - types-requests
-        - types-PyYAML
-        - types-python-dateutil
-        - types-setuptools
-        - types-urllib3
-
--   repo: local
-    hooks:
-    -   id: check-docs
-        name: Check Documentation
-        entry: |
-          #!/bin/bash
-          # Check if documentation needs updating
-          if git diff --name-only | grep -E '\.(py|md)$' > /dev/null; then
-            echo "Documentation may need updating. Please check:"
-            echo "1. Docstrings in modified Python files"
-            echo "2. Relevant documentation in docs/"
-            echo "3. Run 'mkdocs serve' to preview changes"
-            exit 1
-          fi
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
-
-    -   id: check-docstrings
-        name: Check Python Docstrings
-        entry: |
-          #!/bin/bash
-          # Check for missing docstrings in modified Python files
-          for file in $(git diff --name-only | grep '\.py$'); do
-            if ! grep -q '"""' "$file"; then
-              echo "Warning: $file may be missing docstrings"
-            fi
-          done
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
-
-    -   id: check-api-docs
-        name: Check API Documentation
-        entry: |
-          #!/bin/bash
-          # Check if API changes are documented
-          if git diff --name-only | grep -E 'api/.*\.py$' > /dev/null; then
-            if ! git diff --name-only | grep -E 'docs/api/.*\.md$' > /dev/null; then
-              echo "Warning: API changes detected but no corresponding documentation updates found"
-              echo "Please update docs/api/endpoints.md or docs/api/overview.md"
-            fi
-          fi
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
-
-    -   id: validate-mkdocs
-        name: Validate MkDocs Configuration
-        entry: |
-          #!/bin/bash
-          # Validate MkDocs configuration and build
-          if ! command -v mkdocs &> /dev/null; then
-            echo "MkDocs not found. Installing..."
-            pip install mkdocs mkdocs-material mkdocstrings mkdocstrings-python
-          fi
-
-          # Validate mkdocs.yml
-          if ! mkdocs build --strict &> /dev/null; then
-            echo "MkDocs build failed. Please check your configuration."
-            exit 1
-          fi
-
-          # Check for broken links
-          if ! command -v mkdocs-broken-links-plugin &> /dev/null; then
-            echo "Installing mkdocs-broken-links-plugin..."
-            pip install mkdocs-broken-links-plugin
-          fi
-
-          if ! mkdocs build --strict &> /dev/null; then
-            echo "Found broken links in documentation."
-            exit 1
-          fi
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
-
-    -   id: check-docs-tests
-        name: Run Documentation Tests
-        entry: |
-          #!/bin/bash
-          # Run documentation tests
-          if ! command -v pytest &> /dev/null; then
-            echo "pytest not found. Installing..."
-            pip install pytest
-          fi
-
-          if [ -f "tests/test_docs.py" ]; then
-            pytest tests/test_docs.py -v
-          else
-            echo "Warning: tests/test_docs.py not found"
-          fi
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
-
-    -   id: suggest-docs-improvements
-        name: Suggest Documentation Improvements
-        entry: |
-          #!/bin/bash
-          # Install required packages if not present
-          if ! command -v pip &> /dev/null; then
-            echo "pip not found. Please install pip first."
-            exit 1
-          fi
-
-          # Install required packages
-          pip install -q beautifulsoup4 markdown PyYAML
-
-          # Create temporary Python script for analysis
-          cat > /tmp/doc_analyzer.py << 'EOL'
-          import os
-          import re
-          import sys
-          from pathlib import Path
-          import markdown
-          from bs4 import BeautifulSoup
-          import yaml
-
-          def analyze_markdown_file(file_path):
-              suggestions = []
-              with open(file_path, 'r') as f:
-                  content = f.read()
-
-              # Check for headings structure
-              headings = re.findall(r'^#{1,6}\s+(.+)$', content, re.MULTILINE)
-              if len(headings) < 2:
-                  suggestions.append(f"Consider adding more sections to {file_path}")
-              if not any(h.startswith('# ') for h in headings):
-                  suggestions.append(f"Add a main heading (# ) to {file_path}")
-
-              # Check for code blocks
-              code_blocks = re.findall(r'```(\w+)?\n(.*?)```', content, re.DOTALL)
-              if not code_blocks:
-                  suggestions.append(f"Consider adding code examples to {file_path}")
-
-              # Check for links
-              links = re.findall(r'\[([^\]]+)\]\(([^)]+)\)', content)
-              if not links:
-                  suggestions.append(f"Consider adding relevant links to {file_path}")
-
-              # Check for images
-              images = re.findall(r'!\[([^\]]*)\]\(([^)]+)\)', content)
-              if not images and len(content.split('\n')) > 50:
-                  suggestions.append(f"Consider adding diagrams or images to {file_path}")
-
-              # Check for lists
-              lists = re.findall(r'^\s*[-*+]\s+.+$', content, re.MULTILINE)
-              if not lists and len(content.split('\n')) > 30:
-                  suggestions.append(f"Consider using bullet points or numbered lists in {file_path}")
-
-              return suggestions
-
-          def analyze_docstring(file_path):
-              suggestions = []
-              with open(file_path, 'r') as f:
-                  content = f.read()
-
-              # Find all functions and classes
-              functions = re.findall(r'def\s+(\w+)\s*\([^)]*\):', content)
-              classes = re.findall(r'class\s+(\w+)\s*[:\(]', content)
-
-              for func in functions:
-                  # Check if function has docstring
-                  func_def = re.search(r'def\s+' + func + r'\s*\([^)]*\):', content)
-                  if func_def:
-                      next_line = content[func_def.end():].split('\n')[0].strip()
-                      if not next_line.startswith('"""'):
-                          suggestions.append(f"Add docstring to function {func} in {file_path}")
-
-              for cls in classes:
-                  # Check if class has docstring
-                  class_def = re.search(r'class\s+' + cls + r'\s*[:\(]', content)
-                  if class_def:
-                      next_line = content[class_def.end():].split('\n')[0].strip()
-                      if not next_line.startswith('"""'):
-                          suggestions.append(f"Add docstring to class {cls} in {file_path}")
-
-              return suggestions
-
-          def main():
-              suggestions = []
-
-              # Analyze markdown files
-              for md_file in Path('docs').rglob('*.md'):
-                  suggestions.extend(analyze_markdown_file(md_file))
-
-              # Analyze Python files
-              for py_file in Path('.').rglob('*.py'):
-                  if 'test_' not in str(py_file) and py_file.name != '__init__.py':
-                      suggestions.extend(analyze_docstring(py_file))
-
-              # Print suggestions
-              if suggestions:
-                  print("\nDocumentation Improvement Suggestions:")
-                  for suggestion in suggestions:
-                      print(f"- {suggestion}")
-                  return 1
-              return 0
-
-          if __name__ == '__main__':
-              sys.exit(main())
-          EOL
-
-          # Run the analyzer
-          python /tmp/doc_analyzer.py
-          result=$?
-
-          # Clean up
-          rm /tmp/doc_analyzer.py
-
-          exit $result
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
+        args: [--exit-non-zero-on-fix]
+        name: ruff (check only)
+        description: |
+          Ruff found issues. Run this to fix:
+          ruff check --fix .

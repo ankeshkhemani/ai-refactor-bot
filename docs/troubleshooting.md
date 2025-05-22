@@ -22,8 +22,8 @@
    ```
 
 2. Verify webhook secret:
-   ```python
-   # Check webhook secret in .env
+   ```env
+   # .env
    GITHUB_WEBHOOK_SECRET=your_webhook_secret
    ```
 
@@ -42,8 +42,8 @@
 
 **Solutions**:
 1. Verify GitHub App credentials:
-   ```python
-   # Check in .env
+   ```env
+   # .env
    GITHUB_APP_ID=your_app_id
    PRIVATE_KEY=your_private_key
    ```
@@ -54,8 +54,8 @@
    - Update environment variables
 
 3. Check installation ID:
-   ```python
-   # Verify in .env
+   ```env
+   # .env
    GITHUB_INSTALLATION_ID=your_installation_id
    ```
 

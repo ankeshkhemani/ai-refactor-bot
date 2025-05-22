@@ -8,6 +8,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 def test_openai_prompt():
+    """Test the OpenAI prompt generation."""
     prompt = """Refactor the following Python code to improve readability and reduce complexity:\n
 def add(x,y): return x+y"""
 
@@ -17,6 +18,11 @@ def add(x,y): return x+y"""
         temperature=0.3,
     )
     print(response.choices[0].message.content.strip())
+
+
+def add(a, b):
+    """Add two numbers and return the result."""
+    return a + b
 
 
 if __name__ == "__main__":

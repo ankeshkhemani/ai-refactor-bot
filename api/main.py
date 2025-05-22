@@ -14,7 +14,10 @@ load_dotenv()
 
 app = FastAPI(
     title="AI Refactoring Bot",
-    description="GitHub-integrated tool that automatically scans Python repositories for technical debt and generates refactoring suggestions",
+    description=(
+        "GitHub-integrated tool that automatically scans Python repositories "
+        "for technical debt and generates refactoring suggestions"
+    ),
     version="1.0.0",
 )
 
@@ -40,9 +43,7 @@ PRIVATE_KEY = private_key_str.encode()
 
 
 class GitHubEvent(BaseModel):
-    """Base model for GitHub webhook events"""
-
-    pass
+    """Represents a GitHub webhook event payload."""
 
 
 async def installation_handler(event: sansio.Event) -> JSONResponse:
@@ -55,29 +56,29 @@ async def installation_handler(event: sansio.Event) -> JSONResponse:
     """
     Installation event payload
     {
-  "action": "created",  // also possible: "deleted"
-  "installation": {
-    "id": 12345678,
-    "account": {
-      "login": "username",
-      ...
-    },
-    "repository_selection": "selected",  // or "all"
-    "app_id": 9876,
-    ...
-  },
-  "repositories": [
-    {
-      "id": 11111111,
-      "name": "example-repo",
-      ...
+        "action": "created",  # also possible: "deleted"
+        "installation": {
+            "id": 12345678,
+            "account": {
+                "login": "username",
+                ...
+            },
+            "repository_selection": "selected",  # or "all"
+            "app_id": 9876,
+            ...
+        },
+        "repositories": [
+            {
+                "id": 11111111,
+                "name": "example-repo",
+                ...
+            }
+        ],
+        "sender": {
+            "login": "username"
+        }
     }
-  ],
-  "sender": {
-    "login": "username"
-  }
-}
-"""
+    """
     # Get the installation ID from the event
     # installation_id = event.data["installation"]["id"]
     # Get the installation access token
@@ -92,7 +93,7 @@ async def installation_handler(event: sansio.Event) -> JSONResponse:
 
 @app.get("/ping")
 async def ping():
-    """Health check endpoint"""
+    """Health check endpoint that returns a pong message."""
     return {"status": "ok", "message": "pong"}
 
 
