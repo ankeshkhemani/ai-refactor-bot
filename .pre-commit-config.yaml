@@ -43,12 +43,22 @@ repos:
           isort src tests
         files: ^(src|tests)/.*\.py$
 
+-   repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+    -   id: flake8
+        name: flake8 (check only)
+        description: |
+          Flake8 found issues. Run this to fix:
+          flake8 src tests
+        files: ^(src|tests)/.*\.py$
+
 -   repo: https://github.com/charliermarsh/ruff-pre-commit
     rev: v0.11.10
     hooks:
     -   id: ruff
-        args: [--exit-non-zero-on-fix]
-        name: ruff (check only)
+        args: [--fix]
+        name: ruff (fix issues)
         description: |
           Ruff found issues. Run this to fix:
           ruff check --fix src tests

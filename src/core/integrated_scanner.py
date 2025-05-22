@@ -10,7 +10,9 @@ from gpt_refactor import get_gpt_refactor
 issues = [
     {
         "file_path": "src/drive.py",
-        "original_code": "import os\nimport time\n\ndef greet():\n    print('Hello world')\n",
+        "original_code": (
+            "import os\nimport time\n\ndef greet():\n    print('Hello world')\n"
+        ),
         "issue_type": "unused imports",
     }
 ]
@@ -24,15 +26,12 @@ def greet():
 async def main():
     """Main entry point for processing issues and creating PRs."""
     for issue in issues:
-        prompt = f"""
-You are a Python expert. Remove only unused imports from this file without changing logic.
-
-```python
-{issue['original_code']}
-```
-
-Return only the full cleaned Python file.
-"""
+        prompt = (
+            "You are a Python expert. Remove only unused imports from this file "
+            "without changing logic.\n\n"
+            f"```python\n{issue['original_code']}\n```\n\n"
+            "Return only the full cleaned Python file."
+        )
         refactored_code = get_gpt_refactor(prompt)
 
         # Skip if no change
@@ -43,9 +42,14 @@ Return only the full cleaned Python file.
         pr_url = await create_pr_for_file_change(
             file_path=issue["file_path"],
             new_content=refactored_code,
-            commit_message=f"refactor: remove unused imports from {issue['file_path']}",
+            commit_message=(
+                f"refactor: remove unused imports from {issue['file_path']}"
+            ),
             pr_title=f"refactor({issue['file_path']}): remove unused imports",
-            pr_body="This PR was auto-generated to clean up unused imports. No logic was changed.",
+            pr_body=(
+                "This PR was auto-generated to clean up unused imports. "
+                "No logic was changed."
+            ),
         )
         print(f"✅ PR created: {pr_url}")
 
