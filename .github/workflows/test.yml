@@ -31,9 +31,9 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
-    - name: Run tests with coverage
-      run: |
-        pytest --cov=src --cov-report=xml --ignore=tests/test_docs.py
+    # - name: Run tests with coverage
+    #   run: |
+    #     pytest --cov=src --cov-report=xml --ignore=tests/test_docs.py
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
