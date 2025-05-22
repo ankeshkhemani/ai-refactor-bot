@@ -24,28 +24,28 @@ jobs:
 
     - name: Run Black
       run: |
-        black . --check
+        black src tests --check
 
     - name: Run isort
       run: |
-        isort . --check-only
+        isort src tests --check-only
 
     - name: Run Flake8
       run: |
-        flake8 .
+        flake8 src tests
 
     - name: Run MyPy
       run: |
-        mypy .
+        mypy src tests
 
     - name: Run Radon
       run: |
-        radon cc . -a
-        radon mi . -a
+        radon cc src -a
+        radon mi src -a
 
     - name: Run Ruff
       run: |
-        ruff check .
+        ruff check src tests
 
     - name: Run pre-commit
       run: |

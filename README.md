@@ -55,18 +55,18 @@ REPO_NAME=your_repo_name
 
 1. Run the development server:
 ```bash
-uvicorn ai_refactor_bot.api.main:app --reload
+PYTHONPATH=src uvicorn src.api.main:app --reload
 ```
 
 2. Run tests:
 ```bash
-pytest
+PYTHONPATH=src pytest
 ```
 
 3. Format code:
 ```bash
-black .
-isort .
+black src tests
+isort src tests
 ```
 
 ## Deployment
@@ -80,10 +80,14 @@ isort .
 
 ```
 ai_refactor_bot/
-├── api/            # FastAPI application and routes
-├── core/           # Core business logic
-├── utils/          # Utility functions
-└── tests/          # Test suite
+├── src/            # Source code
+│   ├── api/        # FastAPI application and routes
+│   └── core/       # Core business logic
+├── tests/          # Test suite
+├── docs/           # Documentation
+├── .github/        # GitHub Actions workflows
+├── requirements.txt
+└── requirements-dev.txt
 ```
 
 ## Contributing

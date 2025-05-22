@@ -4,6 +4,7 @@ exclude_paths:
   - venv/
   - .git/
   - pvt-docs/
+  - src/tests/
 
 scan_frequency: weekly
 
