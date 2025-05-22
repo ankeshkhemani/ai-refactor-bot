@@ -22,31 +22,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
 
-    - name: Run Black
-      run: |
-        black src tests --check
-
-    - name: Run isort
-      run: |
-        isort src tests --check-only
-
-    - name: Run Flake8
-      run: |
-        flake8 src tests
-
-    - name: Run MyPy
-      run: |
-        mypy src tests
-
-    - name: Run Radon
-      run: |
-        radon cc src -a
-        radon mi src -a
-
-    - name: Run Ruff
-      run: |
-        ruff check src tests
-
     - name: Run pre-commit
       run: |
-        pre-commit run --all-files --exclude docs/
+        pre-commit run --all-files
