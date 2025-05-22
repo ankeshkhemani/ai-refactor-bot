@@ -11,52 +11,34 @@ from src.api.main import app
 
 load_dotenv()
 
-APP_ID = os.getenv("GITHUB_APP_ID")
-PRIVATE_KEY_PATH = os.getenv("GITHUB_PRIVATE_KEY_PATH")
-# you'll set this manually for now
-INSTALLATION_ID = os.getenv("GITHUB_INSTALLATION_ID")
 
-# Generate JWT
-if not PRIVATE_KEY_PATH:
-    raise ValueError("GITHUB_PRIVATE_KEY_PATH environment variable is not set")
+class TestConfig:
+    def __init__(self):
+        self.app_id = os.getenv("GITHUB_APP_ID")
+        self.private_key_path = os.getenv("GITHUB_PRIVATE_KEY_PATH")
+        self.installation_id = os.getenv("GITHUB_INSTALLATION_ID")
+        self.repo_owner = "ankeshkhemani"
+        self.repo_name = "CarND-Behavioral-Cloning-Project"
 
-with open(PRIVATE_KEY_PATH, "rb") as f:
-    private_key = f.read()
+    def generate_jwt(self):
+        with open(self.private_key_path, "rb") as f:
+            private_key = f.read()
 
-payload = {
-    "iat": int(time.time()) - 60,
-    "exp": int(time.time()) + (10 * 60),
-    "iss": APP_ID,
-}
+        payload = {
+            "iat": int(time.time()) - 60,
+            "exp": int(time.time()) + (10 * 60),
+            "iss": self.app_id,
+        }
 
-jwt_token = jwt.encode(payload, private_key, algorithm="RS256")
+        return jwt.encode(payload, private_key, algorithm="RS256")
 
-# Get installation access token
-headers = {
-    "Authorization": f"Bearer {jwt_token}",
-    "Accept": "application/vnd.github+json",
-}
+    def get_headers(self):
+        jwt_token = self.generate_jwt()
+        return {
+            "Authorization": f"Bearer {jwt_token}",
+            "Accept": "application/vnd.github+json",
+        }
 
-installation_url = (
-    f"https://api.github.com/app/installations/{INSTALLATION_ID}/access_tokens"
-)
-
-response = httpx.post(installation_url, headers=headers)
-access_token = response.json()["token"]
-
-# Use the token to fetch repo info
-repo_owner = "ankeshkhemani"
-repo_name = "CarND-Behavioral-Cloning-Project"
-
-headers = {
-    "Authorization": f"token {access_token}",
-    "Accept": "application/vnd.github+json",
-}
-
-repo_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}"
-r = httpx.get(repo_url, headers=headers)
-
-print("Repo info:", r.json())
 
 # Create a test client
 client = TestClient(app)
@@ -89,16 +71,40 @@ def test_webhook_missing_headers():
 @pytest.mark.integration
 def test_github_integration():
     """Test GitHub API integration (requires credentials)."""
-    pass
+    config = TestConfig()
+    headers = config.get_headers()
+
+    installation_url = (
+        "https://api.github.com/app/installations/"
+        f"{config.installation_id}/access_tokens"
+    )
+    response = httpx.post(installation_url, headers=headers)
+    access_token = response.json()["token"]
+
+    headers = {
+        "Authorization": f"token {access_token}",
+        "Accept": "application/vnd.github+json",
+    }
+
+    repo_url = (
+        "https://api.github.com/repos/" f"{config.repo_owner}/" f"{config.repo_name}"
+    )
+    r = httpx.get(repo_url, headers=headers)
+    assert r.status_code == 200
 
 
 @pytest.mark.integration
 def test_environment_variables():
     """Test environment variable handling (requires .env file)."""
-    pass
+    config = TestConfig()
+    assert config.app_id is not None
+    assert config.private_key_path is not None
+    assert config.installation_id is not None
 
 
 @pytest.mark.integration
 def test_generate_jwt():
     """Test JWT token generation (requires environment variables)."""
-    pass
+    config = TestConfig()
+    jwt_token = config.generate_jwt()
+    assert jwt_token is not None

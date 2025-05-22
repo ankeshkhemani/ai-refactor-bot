@@ -17,13 +17,27 @@ from dotenv import load_dotenv
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
-REPO_OWNER = os.getenv("REPO_OWNER")
-REPO_NAME = os.getenv("REPO_NAME")
-HEAD_REF = os.getenv("REPO_BRANCH", "main")
 
-APP_ID = os.getenv("GITHUB_APP_ID")
-PRIVATE_KEY_PATH = os.getenv("GITHUB_PRIVATE_KEY_PATH")
-INSTALLATION_ID = os.getenv("GITHUB_INSTALLATION_ID")
+class GitHubConfig:
+    def __init__(self):
+        self.repo_owner = os.getenv("REPO_OWNER")
+        self.repo_name = os.getenv("REPO_NAME")
+        self.head_ref = os.getenv("REPO_BRANCH", "main")
+        self.app_id = os.getenv("GITHUB_APP_ID")
+        self.private_key_path = os.getenv("GITHUB_PRIVATE_KEY_PATH")
+        self.installation_id = os.getenv("GITHUB_INSTALLATION_ID")
+        self.api_url = (
+            f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}"
+        )
+        self.headers = None
+
+    def setup_headers(self):
+        jwt_token = generate_jwt(self.app_id, self.private_key_path)
+        installation_token = get_installation_token(jwt_token, self.installation_id)
+        self.headers = {
+            "Authorization": f"Bearer {installation_token}",
+            "Accept": "application/vnd.github+json",
+        }
 
 
 def generate_jwt(app_id: str, private_key_path: str) -> str:
@@ -46,10 +60,10 @@ def get_installation_token(jwt_token: str, installation_id: str) -> str:
     return response.json()["token"]
 
 
-def get_tree_sha(branch: str) -> str:
-    url = f"{API_URL}/branches/{branch}"
+def get_tree_sha(config: GitHubConfig, branch: str) -> str:
+    url = f"{config.api_url}/branches/{branch}"
     logging.info(f"Fetching commit SHA for branch '{branch}'")
-    resp = requests.get(url, headers=HEADERS)
+    resp = requests.get(url, headers=config.headers)
 
     if resp.status_code == 404:
         logging.error(
@@ -62,24 +76,13 @@ def get_tree_sha(branch: str) -> str:
     return resp.json()["commit"]["commit"]["tree"]["sha"]
 
 
-jwt_token = generate_jwt(APP_ID, PRIVATE_KEY_PATH)
-INSTALLATION_TOKEN = get_installation_token(jwt_token, INSTALLATION_ID)
-
-HEADERS = {
-    "Authorization": f"Bearer {INSTALLATION_TOKEN}",
-    "Accept": "application/vnd.github+json",
-}
-
-API_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}"
-
-
-def fetch_python_files() -> List[str]:
-    tree_sha = get_tree_sha(HEAD_REF)
-    tree_url = f"{API_URL}/git/trees/{tree_sha}?recursive=1"
+def fetch_python_files(config: GitHubConfig) -> List[str]:
+    tree_sha = get_tree_sha(config, config.head_ref)
+    tree_url = f"{config.api_url}/git/trees/{tree_sha}?recursive=1"
     logging.info(f"Fetching file tree from: {tree_url}")
     for attempt in range(3):
         try:
-            resp = requests.get(tree_url, headers=HEADERS)
+            resp = requests.get(tree_url, headers=config.headers)
             resp.raise_for_status()
             files = resp.json().get("tree", [])
             py_files = [
@@ -95,12 +98,12 @@ def fetch_python_files() -> List[str]:
     raise RuntimeError("Failed to fetch Python files from GitHub after 3 attempts")
 
 
-def download_and_decode_file(path: str) -> str:
-    file_url = f"{API_URL}/contents/{path}"
+def download_and_decode_file(config: GitHubConfig, path: str) -> str:
+    file_url = f"{config.api_url}/contents/{path}"
     logging.info(f"Downloading file: {path}")
     for attempt in range(3):
         try:
-            resp = requests.get(file_url, headers=HEADERS)
+            resp = requests.get(file_url, headers=config.headers)
             resp.raise_for_status()
             content = resp.json().get("content", "")
             logging.info(f"Decoded content from: {path}")
@@ -168,11 +171,14 @@ def run_flake8_analysis(code: str) -> List[str]:
 
 def scan_repository() -> Dict[str, Dict]:
     logging.info("Starting repository scan...")
-    file_paths = fetch_python_files()
+    config = GitHubConfig()
+    config.setup_headers()
+
+    file_paths = fetch_python_files(config)
     analysis = {}
     for path in file_paths:
         logging.info(f"Analyzing file: {path}")
-        code = download_and_decode_file(path)
+        code = download_and_decode_file(config, path)
         analysis[path] = {
             "radon": run_radon_analysis(code),
             "flake8": run_flake8_analysis(code),

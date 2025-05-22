@@ -1,14 +1,18 @@
+"""FastAPI application for the AI Refactor Bot."""
+
+import hashlib
+import hmac
 import os
 import time
 
 import jwt
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
-from gidgethub import routing, sansio
 from pydantic import BaseModel
 
-from core.code_scanner import scan_repository
+from core.code_scanner import GitHubConfig, fetch_python_files
+from core.github_pr import GitHubPRConfig, create_pr_for_file_change
 
 load_dotenv()
 
@@ -21,138 +25,113 @@ app = FastAPI(
     version="1.0.0",
 )
 
-router = routing.Router()
 
-GITHUB_APP_ID = os.getenv("GITHUB_APP_ID")
-WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET")
-
-"""
-# For Private Repo
-PRIVATE_KEY_PATH = os.getenv("GITHUB_PRIVATE_KEY_PATH")
-
-with open(PRIVATE_KEY_PATH, "rb") as key_file:
-    PRIVATE_KEY = key_file.read()
-"""
-
-# For Public repo using railway
-PRIVATE_KEY: bytes
-private_key_str = os.getenv("PRIVATE_KEY")
-if not private_key_str:
-    raise ValueError("PRIVATE_KEY environment variable is not set")
-PRIVATE_KEY = private_key_str.encode()
+class WebhookPayload(BaseModel):
+    action: str
+    pull_request: dict = None
+    repository: dict = None
 
 
-class GitHubEvent(BaseModel):
-    """Represents a GitHub webhook event payload."""
+class AppConfig:
+    def __init__(self):
+        self.github_app_id = os.getenv("GITHUB_APP_ID")
+        self.webhook_secret = os.getenv("WEBHOOK_SECRET")
+        self.private_key_path = os.getenv("GITHUB_PRIVATE_KEY_PATH")
+        self.installation_id = os.getenv("GITHUB_INSTALLATION_ID")
+        self.repo_owner = os.getenv("REPO_OWNER")
+        self.repo_name = os.getenv("REPO_NAME")
+
+        if not all(
+            [
+                self.github_app_id,
+                self.webhook_secret,
+                self.private_key_path,
+                self.installation_id,
+                self.repo_owner,
+                self.repo_name,
+            ]
+        ):
+            raise ValueError(
+                "Missing required environment variables. Please set GITHUB_APP_ID, "
+                "WEBHOOK_SECRET, GITHUB_PRIVATE_KEY_PATH, GITHUB_INSTALLATION_ID, "
+                "REPO_OWNER, and REPO_NAME."
+            )
+
+        self.github_config = GitHubConfig()
+        self.pr_config = GitHubPRConfig()
 
 
-async def installation_handler(event: sansio.Event) -> JSONResponse:
-    """Handle GitHub App installation events"""
-    # Check if installation is for selected repositories or all repositories.
-    # If for all repositories, then fetch all repository names using Github API.
-    # For each repository, begin code_scanning using scan_repository function
-    # Generate JWT token to call Github API
-    # Call scan_repository function for each repository
-    """
-    Installation event payload
-    {
-        "action": "created",  # also possible: "deleted"
-        "installation": {
-            "id": 12345678,
-            "account": {
-                "login": "username",
-                ...
-            },
-            "repository_selection": "selected",  # or "all"
-            "app_id": 9876,
-            ...
-        },
-        "repositories": [
-            {
-                "id": 11111111,
-                "name": "example-repo",
-                ...
-            }
-        ],
-        "sender": {
-            "login": "username"
-        }
-    }
-    """
-    # Get the installation ID from the event
-    # installation_id = event.data["installation"]["id"]
-    # Get the installation access token
-    # installation_access_token = get_installation_access_token(installation_id)
-    # Call scan_repository function for each repository
-    scan_repository()  # No arguments needed as it uses environment variables
-    # Return success
-    return JSONResponse(
-        content={"status": "success", "event": "installation"}, status_code=200
-    )
+config = AppConfig()
 
 
-@app.get("/ping")
-async def ping():
-    """Health check endpoint that returns a pong message."""
-    return {"status": "ok", "message": "pong"}
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy"}
 
 
 @app.post("/webhook")
-async def webhook(
-    request: Request,
-    x_github_event: str = Header(None),
-    x_github_delivery: str = Header(None),
-    x_hub_signature: str = Header(None),
-):
-    """
-    Handle GitHub webhook events
-    """
-    if not all([x_github_event, x_github_delivery, x_hub_signature]):
-        raise HTTPException(status_code=400, detail="Missing required GitHub headers")
+async def webhook(request: Request):
+    """Handle GitHub webhook events."""
+    # Verify webhook signature
+    signature = request.headers.get("X-Hub-Signature-256")
+    if not signature:
+        raise HTTPException(status_code=401, detail="No signature provided")
 
-    # Get the raw payload
     payload = await request.body()
+    expected_signature = hmac.new(
+        config.webhook_secret.encode(),
+        payload,
+        hashlib.sha256,
+    ).hexdigest()
 
-    try:
-        # Verify the webhook signature
-        event = sansio.Event.from_http(
-            {
-                "X-GitHub-Event": x_github_event,
-                "X-GitHub-Delivery": x_github_delivery,
-                "X-Hub-Signature": x_hub_signature,
-            },
-            payload,
-            secret=WEBHOOK_SECRET,
-        )
+    if not hmac.compare_digest(f"sha256={expected_signature}", signature):
+        raise HTTPException(status_code=401, detail="Invalid signature")
 
-        # Process the event
-        print(f"📦 Received GitHub event: {x_github_event}")
-        print(f"Delivery ID: {x_github_delivery}")
-        # For installation event, we run the installation_handler
-        if x_github_event == "installation":
-            return await installation_handler(event)
+    # Parse webhook payload
+    data = await request.json()
+    webhook_data = WebhookPayload(**data)
 
-        # For other events, we return success
-        return JSONResponse(
-            content={"status": "success", "event": x_github_event}, status_code=200
-        )
+    # Handle pull request events
+    if webhook_data.action == "opened":
+        # Get changed files
+        files = await fetch_python_files(config.github_config)
 
-    except Exception as e:
-        print(f"Error processing webhook: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        # Create PR for each changed file
+        for file_path, content in files.items():
+            # TODO: Implement actual refactoring logic
+            new_content = content  # Placeholder
+
+            await create_pr_for_file_change(
+                config.pr_config,
+                file_path,
+                new_content,
+                f"Refactor {file_path}",
+                f"Automated refactoring of {file_path}",
+                f"Refactored {file_path}",
+            )
+
+    return JSONResponse(content={"status": "success"})
+
+
+@app.get("/")
+async def root():
+    """Root endpoint."""
+    return {"message": "AI Refactor Bot is running"}
 
 
 def generate_jwt() -> str:
-    """Generate a JWT token for GitHub App authentication"""
-    return jwt.encode(
-        {
-            "iat": int(time.time()),
-            "exp": int(time.time()) + (10 * 60),
-            "iss": GITHUB_APP_ID,
-        },
-        PRIVATE_KEY,
-        algorithm="RS256",
-    )
+    """Generate a JWT for GitHub App authentication."""
+    with open(config.private_key_path) as f:
+        private_key = f.read()
+
+    payload = {
+        "iat": int(time.time()),
+        "exp": int(time.time()) + (10 * 60),
+        "iss": config.github_app_id,
+    }
+
+    return jwt.encode(payload, private_key, algorithm="RS256")
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ import logging
 from typing import Any, Dict, List
 
 from code_scanner import run_flake8_analysis, run_radon_analysis
-from github_pr import create_pr_for_file_change
+from github_pr import GitHubPRConfig, create_pr_for_file_change
 from gpt_refactor import get_gpt_refactor
 
 # Simulated scan result (from flake8/radon)
@@ -25,6 +25,7 @@ def greet():
 
 async def main():
     """Main entry point for processing issues and creating PRs."""
+    pr_config = GitHubPRConfig()  # Use environment or pass explicit values if needed
     for issue in issues:
         prompt = (
             "You are a Python expert. Remove only unused imports from this file "
@@ -40,6 +41,7 @@ async def main():
             continue
 
         pr_url = await create_pr_for_file_change(
+            pr_config,
             file_path=issue["file_path"],
             new_content=refactored_code,
             commit_message=(
