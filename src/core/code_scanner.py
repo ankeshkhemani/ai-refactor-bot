@@ -17,19 +17,13 @@ from dotenv import load_dotenv
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
-REPO_OWNER = os.getenv("REPO_OWNER") or input("Enter the repository owner: ").strip()
-REPO_NAME = os.getenv("REPO_NAME") or input("Enter the repository name: ").strip()
+REPO_OWNER = os.getenv("REPO_OWNER")
+REPO_NAME = os.getenv("REPO_NAME")
 HEAD_REF = os.getenv("REPO_BRANCH", "main")
 
-APP_ID = os.getenv("GITHUB_APP_ID") or input("Enter your GitHub App ID: ").strip()
-PRIVATE_KEY_PATH = (
-    os.getenv("GITHUB_PRIVATE_KEY_PATH")
-    or input("Enter the path to your GitHub App's private key (.pem): ").strip()
-)
-INSTALLATION_ID = (
-    os.getenv("GITHUB_INSTALLATION_ID")
-    or input("Enter your GitHub App installation ID: ").strip()
-)
+APP_ID = os.getenv("GITHUB_APP_ID")
+PRIVATE_KEY_PATH = os.getenv("GITHUB_PRIVATE_KEY_PATH")
+INSTALLATION_ID = os.getenv("GITHUB_INSTALLATION_ID")
 
 
 def generate_jwt(app_id: str, private_key_path: str) -> str:
