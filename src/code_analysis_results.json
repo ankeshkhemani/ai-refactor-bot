@@ -1,0 +1,275 @@
+[
+  {
+    "file": "drive.py",
+    "line": 30,
+    "type": "Cyclomatic Complexity",
+    "complexity": 1,
+    "rank": "A",
+    "function": "crop_camera"
+  },
+  {
+    "file": "drive.py",
+    "line": 41,
+    "type": "Cyclomatic Complexity",
+    "complexity": 1,
+    "rank": "A",
+    "function": "telemetry"
+  },
+  {
+    "file": "drive.py",
+    "line": 64,
+    "type": "Cyclomatic Complexity",
+    "complexity": 1,
+    "rank": "A",
+    "function": "connect"
+  },
+  {
+    "file": "drive.py",
+    "line": 69,
+    "type": "Cyclomatic Complexity",
+    "complexity": 1,
+    "rank": "A",
+    "function": "send_control"
+  },
+  {
+    "file": "drive.py",
+    "type": "Maintainability Index",
+    "score": 72.83,
+    "rank": "A"
+  },
+  {
+    "file": "drive.py",
+    "line": 9,
+    "type": "Flake8 Issues",
+    "code": "F401",
+    "description": "'time' imported but unused"
+  },
+  {
+    "file": "drive.py",
+    "line": 10,
+    "type": "Flake8 Issues",
+    "code": "F401",
+    "description": "'cv2' imported but unused"
+  },
+  {
+    "file": "drive.py",
+    "line": 12,
+    "type": "Flake8 Issues",
+    "code": "F401",
+    "description": "'PIL.ImageOps' imported but unused"
+  },
+  {
+    "file": "drive.py",
+    "line": 13,
+    "type": "Flake8 Issues",
+    "code": "F401",
+    "description": "'flask.render_template' imported but unused"
+  },
+  {
+    "file": "drive.py",
+    "line": 17,
+    "type": "Flake8 Issues",
+    "code": "F401",
+    "description": "'keras.preprocessing.image.ImageDataGenerator' imported but unused"
+  },
+  {
+    "file": "drive.py",
+    "line": 17,
+    "type": "Flake8 Issues",
+    "code": "F401",
+    "description": "'keras.preprocessing.image.array_to_img' imported but unused"
+  },
+  {
+    "file": "drive.py",
+    "line": 17,
+    "type": "Flake8 Issues",
+    "code": "F401",
+    "description": "'keras.preprocessing.image.img_to_array' imported but unused"
+  },
+  {
+    "file": "drive.py",
+    "line": 31,
+    "type": "Flake8 Issues",
+    "code": "F841",
+    "description": "local variable 'height' is assigned to but never used"
+  },
+  {
+    "file": "drive.py",
+    "line": 47,
+    "type": "Flake8 Issues",
+    "code": "F841",
+    "description": "local variable 'speed' is assigned to but never used"
+  },
+  {
+    "file": "drive.py",
+    "line": 57,
+    "type": "Flake8 Issues",
+    "code": "E501",
+    "description": "line too long (91 > 88 characters)"
+  },
+  {
+    "file": "drive.py",
+    "line": 71,
+    "type": "Flake8 Issues",
+    "code": "E122",
+    "description": "continuation line missing indentation or outdented"
+  },
+  {
+    "file": "drive.py",
+    "line": 72,
+    "type": "Flake8 Issues",
+    "code": "E122",
+    "description": "continuation line missing indentation or outdented"
+  },
+  {
+    "file": "drive.py",
+    "line": 79,
+    "type": "Flake8 Issues",
+    "code": "E128",
+    "description": "continuation line under-indented for visual indent"
+  },
+  {
+    "file": "model.py",
+    "line": 131,
+    "type": "Cyclomatic Complexity",
+    "complexity": 7,
+    "rank": "B",
+    "function": "gen_train_data"
+  },
+  {
+    "file": "model.py",
+    "line": 92,
+    "type": "Cyclomatic Complexity",
+    "complexity": 4,
+    "rank": "A",
+    "function": "filter_driving_straight"
+  },
+  {
+    "file": "model.py",
+    "line": 181,
+    "type": "Cyclomatic Complexity",
+    "complexity": 4,
+    "rank": "A",
+    "function": "gen_val_data"
+  },
+  {
+    "file": "model.py",
+    "line": 252,
+    "type": "Cyclomatic Complexity",
+    "complexity": 3,
+    "rank": "A",
+    "function": "build_nvidia_model"
+  },
+  {
+    "file": "model.py",
+    "line": 305,
+    "type": "Cyclomatic Complexity",
+    "complexity": 3,
+    "rank": "A",
+    "function": "main"
+  },
+  {
+    "file": "model.py",
+    "line": 42,
+    "type": "Cyclomatic Complexity",
+    "complexity": 2,
+    "rank": "A",
+    "function": "load_image"
+  },
+  {
+    "file": "model.py",
+    "line": 55,
+    "type": "Cyclomatic Complexity",
+    "complexity": 1,
+    "rank": "A",
+    "function": "randomise_image_brightness"
+  },
+  {
+    "file": "model.py",
+    "line": 66,
+    "type": "Cyclomatic Complexity",
+    "complexity": 1,
+    "rank": "A",
+    "function": "crop_camera"
+  },
+  {
+    "file": "model.py",
+    "line": 78,
+    "type": "Cyclomatic Complexity",
+    "complexity": 1,
+    "rank": "A",
+    "function": "jitter_image_rotation"
+  },
+  {
+    "file": "model.py",
+    "line": 116,
+    "type": "Cyclomatic Complexity",
+    "complexity": 1,
+    "rank": "A",
+    "function": "jitter_camera_image"
+  },
+  {
+    "file": "model.py",
+    "line": 225,
+    "type": "Cyclomatic Complexity",
+    "complexity": 1,
+    "rank": "A",
+    "function": "build_commaai_model"
+  },
+  {
+    "file": "model.py",
+    "line": 297,
+    "type": "Cyclomatic Complexity",
+    "complexity": 1,
+    "rank": "A",
+    "function": "get_callbacks"
+  },
+  {
+    "file": "model.py",
+    "type": "Maintainability Index",
+    "score": 50.43,
+    "rank": "A"
+  },
+  {
+    "file": "model.py",
+    "line": 12,
+    "type": "Flake8 Issues",
+    "code": "F401",
+    "description": "'keras.callbacks.TensorBoard' imported but unused"
+  },
+  {
+    "file": "model.py",
+    "line": 12,
+    "type": "Flake8 Issues",
+    "code": "F401",
+    "description": "'keras.callbacks.ModelCheckpoint' imported but unused"
+  },
+  {
+    "file": "model.py",
+    "line": 67,
+    "type": "Flake8 Issues",
+    "code": "F841",
+    "description": "local variable 'height' is assigned to but never used"
+  },
+  {
+    "file": "model.py",
+    "line": 267,
+    "type": "Flake8 Issues",
+    "code": "F841",
+    "description": "local variable 'same' is assigned to but never used"
+  },
+  {
+    "file": "model.py",
+    "line": 271,
+    "type": "Flake8 Issues",
+    "code": "E741",
+    "description": "ambiguous variable name 'l'"
+  },
+  {
+    "file": "model.py",
+    "line": 284,
+    "type": "Flake8 Issues",
+    "code": "E741",
+    "description": "ambiguous variable name 'l'"
+  }
+]

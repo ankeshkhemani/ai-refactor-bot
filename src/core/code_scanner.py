@@ -1,5 +1,6 @@
 # ai_refactor_bot/code_scanner.py
 
+import ast
 import base64
 import logging
 import os
@@ -7,12 +8,13 @@ import shutil
 import subprocess
 import tempfile
 import time
-from datetime import datetime, timedelta
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
-import jwt
 import requests
 from dotenv import load_dotenv
+
+from ..utils.jwt_helper import generate_github_jwt
+from .code_utils import normalize_code
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
@@ -24,7 +26,7 @@ class GitHubConfig:
         self.repo_name = os.getenv("REPO_NAME")
         self.head_ref = os.getenv("REPO_BRANCH", "main")
         self.app_id = os.getenv("GITHUB_APP_ID")
-        self.private_key_path = os.getenv("GITHUB_PRIVATE_KEY_PATH")
+        self.private_key = os.getenv("GITHUB_PRIVATE_KEY")
         self.installation_id = os.getenv("GITHUB_INSTALLATION_ID")
         self.api_url = (
             f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}"
@@ -32,21 +34,12 @@ class GitHubConfig:
         self.headers = None
 
     def setup_headers(self):
-        jwt_token = generate_jwt(self.app_id, self.private_key_path)
+        jwt_token = generate_github_jwt(self.app_id, self.private_key)
         installation_token = get_installation_token(jwt_token, self.installation_id)
         self.headers = {
             "Authorization": f"Bearer {installation_token}",
             "Accept": "application/vnd.github+json",
         }
-
-
-def generate_jwt(app_id: str, private_key_path: str) -> str:
-    with open(private_key_path, "r") as f:
-        private_key = f.read()
-    now = datetime.utcnow()
-    payload = {"iat": now, "exp": now + timedelta(minutes=10), "iss": app_id}
-    encoded_jwt = jwt.encode(payload, private_key, algorithm="RS256")
-    return encoded_jwt
 
 
 def get_installation_token(jwt_token: str, installation_id: str) -> str:
@@ -187,9 +180,143 @@ def scan_repository() -> Dict[str, Dict]:
     return analysis
 
 
+def extract_function_from_code(
+    code: str, function_name: str, line_number: int
+) -> Optional[Tuple[str, int, int]]:
+    """Extract a specific function from Python code.
+
+    Args:
+        code: The Python code as a string
+        function_name: Name of the function to extract
+        line_number: Line number where the function starts
+
+    Returns:
+        Tuple of (function_code, start_line, end_line) or None if not found
+    """
+    try:
+        tree = ast.parse(code)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == function_name:
+                # Get the line numbers
+                start_line = node.lineno
+                end_line = node.end_lineno
+
+                # Extract the function code while preserving line endings
+                lines = code.splitlines(keepends=True)
+                function_lines = lines[start_line - 1 : end_line]
+                function_code = "".join(function_lines)
+
+                # Normalize the code for consistent handling
+                function_code = normalize_code(function_code)
+
+                return function_code, start_line, end_line
+    except Exception as e:
+        logging.error(f"Error extracting function: {str(e)}")
+
+    return None
+
+
+def get_function_code(
+    config: GitHubConfig, file_path: str, function_name: str, line_number: int
+) -> Optional[str]:
+    """Get a specific function's code from a file in the repository.
+
+    Args:
+        config: GitHubConfig instance
+        file_path: Path to the file in the repository
+        function_name: Name of the function to extract
+        line_number: Line number where the function starts
+
+    Returns:
+        The function's code as a string, or None if not found
+    """
+    try:
+        # Download the file content
+        file_content = download_and_decode_file(config, file_path)
+
+        # Extract the function
+        result = extract_function_from_code(file_content, function_name, line_number)
+        if result:
+            function_code, start_line, end_line = result
+            logging.info(
+                f"Found function {function_name} in {file_path} "
+                f"(lines {start_line}-{end_line})"
+            )
+            return function_code
+        else:
+            logging.error(f"Function {function_name} not found in {file_path}")
+            return None
+
+    except Exception as e:
+        logging.error(f"Error getting function code: {str(e)}")
+        return None
+
+
 if __name__ == "__main__":
     logging.info("Starting full scan run")
     results = scan_repository()
+
+    # Create a list to store all issues
+    all_issues = []
+
+    for file, metrics in results.items():
+        # Process Cyclomatic Complexity
+        for tmp_path, entries in metrics["radon"]["complexity"].items():
+            for fn in entries:
+                all_issues.append(
+                    {
+                        "file": file,
+                        "line": fn["lineno"],
+                        "type": "Cyclomatic Complexity",
+                        "complexity": fn["complexity"],
+                        "rank": fn["rank"],
+                        "function": fn["name"],
+                    }
+                )
+
+        # Process Maintainability Index
+        for tmp_path, entry in metrics["radon"]["maintainability"].items():
+            all_issues.append(
+                {
+                    "file": file,
+                    "type": "Maintainability Index",
+                    "score": round(entry["mi"], 2),
+                    "rank": entry["rank"],
+                }
+            )
+
+        # Process Flake8 Issues
+        for issue in metrics["flake8"]:
+            # Parse the Flake8 output
+            parts = issue.split(":")
+            if len(parts) >= 4:
+                line = int(parts[1])
+                # Extract code and description
+                code_desc = parts[3].strip()
+                code = code_desc.split()[0]  # Get the code (e.g., F401)
+                description = " ".join(
+                    code_desc.split()[1:]
+                )  # Get the rest as description
+                all_issues.append(
+                    {
+                        "file": file,
+                        "line": line,
+                        "type": "Flake8 Issues",
+                        "code": code,
+                        "description": description,
+                    }
+                )
+
+    # Save to JSON file
+    import json
+
+    output_file = "code_analysis_results.json"
+    with open(output_file, "w") as f:
+        json.dump(all_issues, f, indent=2)
+
+    logging.info(f"Analysis results saved to {output_file}")
+
+    # Print summary for console output
     for file, metrics in results.items():
         print("\n📄", file)
 
