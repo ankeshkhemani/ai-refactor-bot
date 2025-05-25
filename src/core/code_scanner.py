@@ -1,7 +1,9 @@
 # ai_refactor_bot/code_scanner.py
 
 import ast
+import asyncio
 import base64
+import json
 import logging
 import os
 import shutil
@@ -10,84 +12,81 @@ import tempfile
 import time
 from typing import Dict, List, Optional, Tuple
 
+import aiohttp
+import redis
 import requests
 from dotenv import load_dotenv
 
-from ..utils.jwt_helper import generate_github_jwt
 from .code_utils import normalize_code
+from .github_config import GitHubConfig
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
 
-class GitHubConfig:
-    def __init__(self):
-        self.repo_owner = os.getenv("REPO_OWNER")
-        self.repo_name = os.getenv("REPO_NAME")
-        self.head_ref = os.getenv("REPO_BRANCH", "main")
-        self.app_id = os.getenv("GITHUB_APP_ID")
-        self.private_key = os.getenv("GITHUB_PRIVATE_KEY")
-        self.installation_id = os.getenv("GITHUB_INSTALLATION_ID")
-        self.api_url = (
-            f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}"
-        )
-        self.headers = None
-
-    def setup_headers(self):
-        jwt_token = generate_github_jwt(self.app_id, self.private_key)
-        installation_token = get_installation_token(jwt_token, self.installation_id)
-        self.headers = {
-            "Authorization": f"Bearer {installation_token}",
-            "Accept": "application/vnd.github+json",
-        }
-
-
-def get_installation_token(jwt_token: str, installation_id: str) -> str:
-    url = f"https://api.github.com/app/installations/{installation_id}/access_tokens"
-    headers = {
-        "Authorization": f"Bearer {jwt_token}",
-        "Accept": "application/vnd.github+json",
-    }
-    response = requests.post(url, headers=headers)
-    response.raise_for_status()
-    return response.json()["token"]
-
-
-def get_tree_sha(config: GitHubConfig, branch: str) -> str:
+async def get_tree_sha(config: GitHubConfig, branch: str) -> str:
+    """Get the tree SHA for a branch."""
     url = f"{config.api_url}/branches/{branch}"
     logging.info(f"Fetching commit SHA for branch '{branch}'")
-    resp = requests.get(url, headers=config.headers)
 
-    if resp.status_code == 404:
-        logging.error(
-            f"Branch '{branch}' not found. "
-            "Check if the branch exists in the repository."
-        )
-        raise RuntimeError(f"Branch '{branch}' not found.")
+    # Get installation token
+    token = await config.get_installation_token()
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json",
+    }
 
-    resp.raise_for_status()
-    return resp.json()["commit"]["commit"]["tree"]["sha"]
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as resp:
+            if resp.status == 404:
+                logging.error(
+                    f"Branch '{branch}' not found. "
+                    "Check if the branch exists in the repository."
+                )
+                raise RuntimeError(f"Branch '{branch}' not found.")
+
+            if resp.status != 200:
+                error_text = await resp.text()
+                raise Exception(f"Failed to get tree SHA: {error_text}")
+
+            data = await resp.json()
+            return data["commit"]["commit"]["tree"]["sha"]
 
 
-def fetch_python_files(config: GitHubConfig) -> List[str]:
-    tree_sha = get_tree_sha(config, config.head_ref)
+async def fetch_python_files(config: GitHubConfig) -> List[str]:
+    """Fetch all Python files from the repository."""
+    tree_sha = await get_tree_sha(config, config.head_ref)
     tree_url = f"{config.api_url}/git/trees/{tree_sha}?recursive=1"
     logging.info(f"Fetching file tree from: {tree_url}")
+
+    # Get installation token
+    token = await config.get_installation_token()
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+
     for attempt in range(3):
         try:
-            resp = requests.get(tree_url, headers=config.headers)
-            resp.raise_for_status()
-            files = resp.json().get("tree", [])
-            py_files = [
-                f["path"]
-                for f in files
-                if f["path"].endswith(".py") and f["type"] == "blob"
-            ]
-            logging.info(f"Found {len(py_files)} Python files")
-            return py_files
-        except requests.RequestException as e:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(tree_url, headers=headers) as resp:
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        raise Exception(f"Failed to fetch file tree: {error_text}")
+
+                    data = await resp.json()
+                    files = data.get("tree", [])
+                    py_files = [
+                        f["path"]
+                        for f in files
+                        if f["path"].endswith(".py") and f["type"] == "blob"
+                    ]
+                    logging.info(f"Found {len(py_files)} Python files")
+                    return py_files
+        except Exception as e:
             logging.warning(f"Attempt {attempt+1}: Failed to fetch file tree - {e}")
-            time.sleep(2)
+            if attempt < 2:  # Don't sleep on the last attempt
+                time.sleep(2)
     raise RuntimeError("Failed to fetch Python files from GitHub after 3 attempts")
 
 
@@ -162,20 +161,20 @@ def run_flake8_analysis(code: str) -> List[str]:
         logging.debug(f"Deleted temp file: {tmp_path}")
 
 
-def scan_repository() -> Dict[str, Dict]:
+async def scan_repository(config: GitHubConfig) -> Dict[str, Dict]:
+    """Scan a repository for code quality issues."""
     logging.info("Starting repository scan...")
-    config = GitHubConfig()
-    config.setup_headers()
 
-    file_paths = fetch_python_files(config)
+    file_paths = await fetch_python_files(config)
     analysis = {}
     for path in file_paths:
         logging.info(f"Analyzing file: {path}")
-        code = download_and_decode_file(config, path)
-        analysis[path] = {
-            "radon": run_radon_analysis(code),
-            "flake8": run_flake8_analysis(code),
-        }
+        code = await config.get_file_content(path)
+        if code:
+            analysis[path] = {
+                "radon": run_radon_analysis(code),
+                "flake8": run_flake8_analysis(code),
+            }
     logging.info("Repository scan complete")
     return analysis
 
@@ -252,9 +251,23 @@ def get_function_code(
         return None
 
 
+def save_to_db(issues: List[Dict]) -> None:
+    """Save the analysis results to Redis.
+    Args:
+        issues: List of issue dictionaries to save.
+    """
+    # Connect to Redis
+    r = redis.Redis(host="localhost", port=6379, db=0)
+    # Save each issue as a JSON string in Redis
+    for i, issue in enumerate(issues):
+        r.set(f"issue:{i}", json.dumps(issue))
+    logging.info("Analysis results saved to Redis.")
+
+
 if __name__ == "__main__":
     logging.info("Starting full scan run")
-    results = scan_repository()
+    config = GitHubConfig()
+    results = asyncio.run(scan_repository(config))
 
     # Create a list to store all issues
     all_issues = []
@@ -307,14 +320,8 @@ if __name__ == "__main__":
                     }
                 )
 
-    # Save to JSON file
-    import json
-
-    output_file = "code_analysis_results.json"
-    with open(output_file, "w") as f:
-        json.dump(all_issues, f, indent=2)
-
-    logging.info(f"Analysis results saved to {output_file}")
+    # Save to Redis
+    save_to_db(all_issues)
 
     # Print summary for console output
     for file, metrics in results.items():

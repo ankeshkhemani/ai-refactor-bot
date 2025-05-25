@@ -39,44 +39,51 @@ else:
 
 class GitHubPRConfig:
     def __init__(
-        self, token: str = None, repo_owner: str = None, repo_name: str = None
+        self, installation_id: str = None, repo_owner: str = None, repo_name: str = None
     ):
         logging.info("Initializing GitHubPRConfig...")
-        self.repo_owner = repo_owner or os.getenv("REPO_OWNER")
-        self.repo_name = repo_name or os.getenv("REPO_NAME")
+        self.installation_id = installation_id
+        self.repo_owner = repo_owner
+        self.repo_name = repo_name
         self.app_id = os.getenv("GITHUB_APP_ID")
         self.private_key = os.getenv("GITHUB_PRIVATE_KEY")
-        self.installation_id = os.getenv("GITHUB_INSTALLATION_ID")
-        self.api_base = (
-            f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}"
-        )
-        self.api_url = self.api_base  # For compatibility with async PR creation
-        self.session = httpx.AsyncClient()
-        self.headers = None
-        logging.info(f"Repo: {self.repo_owner}/{self.repo_name}")
-        logging.info(f"App ID: {self.app_id}")
-        logging.info(f"Installation ID: {self.installation_id}")
-        logging.info("Private key present: " + ("Yes" if self.private_key else "No"))
-        if not all([self.app_id, self.private_key, self.installation_id]):
+
+        if not all([self.app_id, self.private_key]):
             missing = []
             if not self.app_id:
                 missing.append("GITHUB_APP_ID")
             if not self.private_key:
                 missing.append("GITHUB_PRIVATE_KEY")
-            if not self.installation_id:
-                missing.append("GITHUB_INSTALLATION_ID")
             raise ValueError(
                 f"Missing GitHub App credentials: {', '.join(missing)}. "
                 "Please set all required environment variables."
             )
-        self._setup_headers()
+
+        if self.repo_owner and self.repo_name:
+            self.api_base = (
+                f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}"
+            )
+            self.api_url = self.api_base
+        else:
+            self.api_base = None
+            self.api_url = None
+
+        self.session = httpx.AsyncClient()
+        self.headers = None
+
+        if self.installation_id:
+            self._setup_headers()
 
     def _setup_headers(self):
         """Set up GitHub App authentication headers."""
+        if not self.installation_id:
+            raise ValueError("Installation ID is required to set up headers")
+
         logging.info("Setting up GitHub authentication headers...")
         try:
             jwt_token = generate_github_jwt(self.app_id, self.private_key)
             logging.info("JWT token generated successfully")
+
             # Get installation access token
             logging.info("Requesting installation access token...")
             headers = {
@@ -84,13 +91,13 @@ class GitHubPRConfig:
                 "Accept": "application/vnd.github+json",
             }
             response = requests.post(
-                f"https://api.github.com/app/installations/"
-                f"{self.installation_id}/access_tokens",
+                f"https://api.github.com/app/installations/{self.installation_id}/access_tokens",
                 headers=headers,
             )
             response.raise_for_status()
             installation_token = response.json()["token"]
             logging.info("Installation access token received successfully")
+
             # Set headers for API calls
             self.headers = {
                 "Authorization": f"Bearer {installation_token}",

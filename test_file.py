@@ -1,6 +1,3 @@
-import os
-import sys
-import time
 from typing import Dict, List
 
 
@@ -22,7 +19,6 @@ def complex_function(data: List[Dict]) -> None:
 def unused_variable():
     """Function with unused variables."""
     x = 10
-    y = 20
     print("Hello")
     return x
 

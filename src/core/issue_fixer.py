@@ -8,10 +8,10 @@ from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
 from .code_scanner import (
+    extract_function_from_code,
     run_flake8_analysis,
     run_radon_analysis,
 )
-from .code_utils import normalize_code
 from .github_pr import GitHubPRConfig, create_pr_for_file_change
 
 # from gpt_refactor import get_gpt_refactor
@@ -173,28 +173,27 @@ MAX_DIFF_LINES = 50  # configurable
 MAX_DIFF_PERCENT = 0.3  # 30%
 
 
-def is_diff_too_large(original: str, fixed: str) -> bool:
-    """Check if the diff between original and fixed code is too large."""
-    # Normalize both versions before diffing
-    original = normalize_code(original)
-    fixed = normalize_code(fixed)
+def is_diff_too_large(original: str, fixed: str, max_lines: int = 50) -> bool:
+    """Check if the diff between original and fixed code is too large.
 
+    Args:
+        original: Original code
+        fixed: Fixed code
+        max_lines: Maximum number of lines allowed in diff
+
+    Returns:
+        True if diff is too large, False otherwise
+    """
     original_lines = original.splitlines()
     fixed_lines = fixed.splitlines()
-    diff = list(difflib.unified_diff(original_lines, fixed_lines))
-    # Count changed lines (lines starting with + or - but not diff headers)
-    changed_lines = [
-        line
-        for line in diff
-        if line
-        and (line[0] == "+" or line[0] == "-")
-        and not line.startswith("+++")
-        and not line.startswith("---")
-    ]
-    num_changed = len(changed_lines)
-    total_lines = max(len(original_lines), 1)  # avoid division by zero
-    percent_changed = num_changed / total_lines
-    return num_changed > MAX_DIFF_LINES or percent_changed > MAX_DIFF_PERCENT
+
+    # Count changed lines
+    diff = difflib.unified_diff(original_lines, fixed_lines, n=0)
+    changed_lines = sum(
+        1 for line in diff if line.startswith("+") or line.startswith("-")
+    )
+
+    return changed_lines > max_lines
 
 
 async def fix_single_issue(
@@ -203,67 +202,65 @@ async def fix_single_issue(
     """Fix a single code issue using GPT and prepare for PR creation.
 
     Args:
-        issue: A single issue from code_scanner output, e.g.:
-            {
-                "file": "drive.py",
-                "line": 9,
-                "type": "Flake8 Issues",
-                "code": "F401",
-                "description": "'time' imported but unused"
-            }
+        issue: A single issue from code_scanner output
         original_code: The original content of the file
         config: Configuration dictionary with GPT settings
 
     Returns:
         Tuple of (fixed_code, commit_message)
     """
-    # Create a focused prompt based on the issue type
-    if issue["type"] == "Flake8 Issues":
-        prompt = create_flake8_prompt(issue, original_code)
-    elif issue["type"] == "Cyclomatic Complexity":
-        prompt = create_complexity_prompt(issue, original_code)
-    elif issue["type"] == "Maintainability Index":
-        prompt = create_maintainability_prompt(issue, original_code)
-    else:
-        raise ValueError(f"Unsupported issue type: {issue['type']}")
-
     try:
-        # Call GPT to get the fix
+        # Extract the relevant code block based on issue type
+        if issue["type"] == "Flake8 Issues":
+            # For Flake8 issues, get the specific line and surrounding context
+            lines = original_code.splitlines()
+            line_num = issue["line"] - 1  # Convert to 0-based index
+            start_line = max(0, line_num - 5)  # 5 lines before
+            end_line = min(len(lines), line_num + 5)  # 5 lines after
+            context = "\n".join(lines[start_line : end_line + 1])
+            prompt = create_flake8_prompt(issue, context)
+        elif issue["type"] == "Cyclomatic Complexity":
+            # For complexity issues, get the specific function
+            function_name = issue["function"]
+            function_code = extract_function_from_code(
+                original_code, function_name, issue["line"]
+            )
+            if not function_code:
+                logging.warning(f"Could not extract function {function_name} from code")
+                return "", ""
+            prompt = create_complexity_prompt(issue, function_code)
+        else:
+            logging.warning(f"Unsupported issue type: {issue['type']}")
+            return "", ""
+
+        # Add rate limiting delay
+        await asyncio.sleep(1)  # Add 1 second delay between requests
+
+        # Get fix from GPT
         response = await client.chat.completions.create(
-            model=config.get("gpt_model", "gpt-4"),
+            model=config["gpt_model"],
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a Python expert code fixer. "
-                        "Return only the fixed code without any explanations "
-                        "or markdown formatting."
-                    ),
-                },
+                {"role": "system", "content": "You are a code refactoring expert."},
                 {"role": "user", "content": prompt},
             ],
-            temperature=config.get("temperature", 0.7),
-            max_tokens=config.get("max_tokens", 2000),
+            temperature=config["temperature"],
+            max_tokens=config["max_tokens"],
         )
 
-        # Extract the fixed code from the response
+        # Parse the response
         fixed_code = response.choices[0].message.content.strip()
 
-        # Remove any markdown code block formatting if present
-        if fixed_code.startswith("```python"):
-            fixed_code = fixed_code[9:]
-        if fixed_code.endswith("```"):
-            fixed_code = fixed_code[:-3]
-        fixed_code = fixed_code.strip()
+        # Create commit message
+        if issue["type"] == "Flake8 Issues":
+            commit_message = f"Fix {issue['code']}: {issue['description']}"
+        else:
+            commit_message = f"Reduce complexity of {issue['function']} function"
+
+        return fixed_code, commit_message
 
     except Exception as e:
-        logging.error(f"Error getting GPT fix: {str(e)}")
-        return original_code, create_commit_message(issue)
-
-    # Create a descriptive commit message
-    commit_message = create_commit_message(issue)
-
-    return fixed_code, commit_message
+        logging.error(f"Error fixing issue: {str(e)}")
+        return "", ""
 
 
 def create_flake8_prompt(issue: Dict[str, Any], original_code: str) -> str:
@@ -351,10 +348,10 @@ async def create_fix_pr(
     try:
         pr_body = (
             f"This PR fixes the following issue:\n\n"
-            f"- Type: {issue['type']}\n"  # noqa: E501
-            f"- Description: {issue['description']}\n"  # noqa: E501
-            f"- File: {issue['file']}\n"  # noqa: E501
-            f"- Line: {issue['line']}\n"  # noqa: E501
+            f"- Type: {issue['type']}\n"
+            f"- Description: {issue['description']}\n"
+            f"- File: {issue['file']}\n"
+            f"- Line: {issue['line']}\n"
         )
         pr_url = await create_pr_for_file_change(
             repo=config["repo"],
@@ -389,7 +386,7 @@ def get_complexity_rank(complexity: int) -> str:
 async def test_issue_fix():
     """Test the issue fixing functionality."""
     config = {
-        "gpt_model": "gpt-4",
+        "gpt_model": "o4-mini",
         "temperature": 0.7,
         "max_tokens": 2000,
         "repo": "test-repo",

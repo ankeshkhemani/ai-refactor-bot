@@ -2,11 +2,16 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add src to Python path
-src_path = str(Path(__file__).parent / "src")
-sys.path.append(src_path)
 
-from core.integrated_scanner import analyze_code_quality
+def setup_path():
+    """Add src directory to Python path."""
+    src_path = str(Path(__file__).parent / "src")
+    if src_path not in sys.path:
+        sys.path.insert(0, src_path)
+
+
+setup_path()
+from src.core.integrated_scanner import analyze_code_quality
 
 
 async def test_scanner():

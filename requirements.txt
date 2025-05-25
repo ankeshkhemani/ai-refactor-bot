@@ -9,15 +9,30 @@ python-dotenv>=0.19.0  # Load environment variables from .env file
 gidgethub>=5.0.0      # GitHub API client with async support
 PyJWT>=2.3.0          # JSON Web Token implementation for GitHub App authentication
 httpx>=0.24.0         # Modern HTTP client for making API requests
+aiohttp>=3.8.0         # Modern HTTP client for making API requests
 
 # AI and Code Analysis
 # ---------------
-openai>=1.0.0         # OpenAI API client for code refactoring
-radon>=6.0.0          # Code complexity metrics and analysis
-flake8>=6.0.0         # Code linter for style guide enforcement
+openai>=0.27.0         # OpenAI API client for code refactoring
+radon>=5.1.0          # Code complexity metrics and analysis
+flake8>=4.0.0         # Code linter for style guide enforcement
+
+# Database
+# ---------------
+sqlalchemy>=1.4.0     # SQL toolkit and ORM
+alembic>=1.7.0       # Database migration tool
+# psycopg2-binary>=2.9.0  # Uncomment for PostgreSQL support
+
+# Scheduling
+# ---------------
+apscheduler>=3.10.1   # Advanced Python Scheduler
 
 # Optional Dependencies
 # ---------------
 # Uncomment if you need these features:
 # redis>=5.0.0         # For caching and rate limiting
 # prometheus-client>=0.19.0  # For metrics collection
+# psycopg2-binary>=2.9.9 # PostgreSQL adapter (for production)
+
+# Utilities
+pydantic>=1.8.0

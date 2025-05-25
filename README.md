@@ -1,23 +1,77 @@
-# AI Refactoring Bot
+# AI Refactor Bot
 
-An intelligent GitHub bot that automatically scans Python repositories for technical debt and generates refactoring suggestions using AI.
+An intelligent GitHub App that automatically scans Python repositories for technical debt and generates refactoring suggestions using AI.
 
-## Features
+## Architecture
 
-- 🔍 Automated code scanning using Radon and Flake8
-- 🤖 AI-powered code refactoring suggestions using GPT-4
-- 🔄 Automatic PR creation for suggested improvements
-- 📊 Code quality metrics and analysis
-- 🔐 Secure GitHub App integration
+The bot uses a queue-based microservices architecture with three main components:
 
-## Prerequisites
+### 1. Analysis Service
+- Scans repositories for code quality issues using:
+  - Radon for cyclomatic complexity analysis
+  - Flake8 for code style and potential bugs
+- Groups issues by file for efficient processing
+- Uses AI to generate fixes for identified issues
+- Enqueues fixes for PR creation
 
-- Python 3.8+
-- GitHub App credentials
-- OpenAI API key
-- Railway account (for deployment)
+### 2. PR Service
+- Processes fixes from the queue
+- Creates pull requests with AI-generated improvements
+- Handles retries and error recovery
+- Manages GitHub API interactions
+
+### 3. Queue Service
+- Uses Redis for message queuing
+- Manages two queues:
+  - `analysis`: For repository analysis tasks
+  - `pr_creation`: For PR creation tasks
+- Provides reliable message delivery and retry mechanisms
+
+## Flow
+
+1. **Installation**
+   - GitHub App is installed on a repository
+   - Webhook receives installation event
+   - Repositories are enqueued for analysis
+
+2. **Analysis**
+   - Analysis service processes repository
+   - Scans for code quality issues
+   - Groups issues by file
+   - Generates fixes using AI
+   - Enqueues fixes for PR creation
+
+3. **PR Creation**
+   - PR service processes fixes
+   - Creates pull requests with improvements
+   - Handles retries if needed
 
 ## Setup
+
+### Prerequisites
+- Python 3.8+
+- Redis server
+- PostgreSQL database
+- GitHub App credentials
+
+### Environment Variables
+```env
+# GitHub App Configuration
+GITHUB_APP_ID=your_app_id
+GITHUB_PRIVATE_KEY=your_private_key
+GITHUB_WEBHOOK_SECRET=your_webhook_secret
+
+# Database Configuration
+DATABASE_URL=postgresql://user:password@localhost:5432/ai_refactor_bot
+
+# Redis Configuration
+REDIS_URL=redis://localhost:6379/0
+
+# OpenAI Configuration
+OPENAI_API_KEY=your_openai_api_key
+```
+
+### Installation
 
 1. Clone the repository:
 ```bash
@@ -25,7 +79,7 @@ git clone https://github.com/yourusername/ai-refactor-bot.git
 cd ai-refactor-bot
 ```
 
-2. Create and activate a virtual environment:
+2. Create and activate virtual environment:
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -36,67 +90,67 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Create a `.env` file with the following variables:
-```env
-# GitHub App Configuration
-GITHUB_APP_ID=your_app_id
-GITHUB_WEBHOOK_SECRET=your_webhook_secret
-PRIVATE_KEY=your_private_key
+4. Set up the database:
+```bash
+alembic upgrade head
+```
 
-# OpenAI Configuration
-OPENAI_API_KEY=your_openai_api_key
+5. Start the application:
+```bash
+uvicorn src.api.main:app --reload
+```
 
-# Repository Configuration
-REPO_OWNER=your_username
-REPO_NAME=your_repo_name
+## Usage
+
+### GitHub App Installation
+
+1. Install the GitHub App on your repository
+2. The bot will automatically:
+   - Scan your repository for issues
+   - Create pull requests with improvements
+   - Handle retries and error recovery
+
+### Manual Analysis
+
+You can trigger analysis manually using the API:
+
+```bash
+curl -X POST http://localhost:8000/analyze \
+  -H "Content-Type: application/json" \
+  -d '{
+    "repo_owner": "your_username",
+    "repo_name": "your_repo",
+    "installation_id": "your_installation_id"
+  }'
 ```
 
 ## Development
 
-1. Run the development server:
+### Running Tests
 ```bash
-PYTHONPATH=src uvicorn src.api.main:app --reload
+pytest
 ```
 
-2. Run tests:
+### Code Style
+The project uses:
+- Black for code formatting
+- Flake8 for linting
+- MyPy for type checking
+
+Run all checks:
 ```bash
-PYTHONPATH=src pytest
-```
-
-3. Format code:
-```bash
-black src tests
-isort src tests
-```
-
-## Deployment
-
-1. Create a new Railway project
-2. Connect your GitHub repository
-3. Add the required environment variables
-4. Deploy!
-
-## Project Structure
-
-```
-ai_refactor_bot/
-├── src/            # Source code
-│   ├── api/        # FastAPI application and routes
-│   └── core/       # Core business logic
-├── tests/          # Test suite
-├── docs/           # Documentation
-├── .github/        # GitHub Actions workflows
-├── requirements.txt
-└── requirements-dev.txt
+black .
+flake8
+mypy .
 ```
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+3. Make your changes
+4. Run tests and checks
+5. Submit a pull request
 
 ## License
 
